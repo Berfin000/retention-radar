@@ -1,2 +1,142 @@
-# retention-radar
-End-to-end BI &amp; predictive analytics on 1M+ UK retail transactions — PostgreSQL data warehouse, live currency API, Python EDA/BI, churn prediction (ROC-AUC 0.82), and a 3-page Power BI dashboard.
+# Retention Radar
+
+**End-to-end business intelligence & predictive analytics project** built on ~1.07 million UK online retail transactions — from a raw CSV all the way to a live PostgreSQL data warehouse, a currency-conversion API integration, exploratory/BI analysis in Python, a churn-prediction ML model, a business findings report, and an interactive 3-page Power BI dashboard.
+
+This is a portfolio project I built to demonstrate an end-to-end analytics workflow the way a real data team would run it — not just a single notebook, but a proper pipeline: **SQL warehouse → live data feed → Python EDA/BI → ML → business report → BI dashboard.**
+
+## Highlights
+
+- 🗄️ **PostgreSQL star-schema data warehouse** built from raw transactional data with explicit business rules for cancellations, guest checkouts, and bad-debt adjustments
+- 🌐 **Live external API integration** — real-time and historical GBP → USD/EUR/TRY exchange rates, with a documented offline-cache fallback
+- 📊 **Business-intelligence-focused EDA** in Python (not just descriptive stats — every chart ends in an explicit business takeaway)
+- 🤖 **Leakage-safe churn prediction model** (Logistic Regression + Random Forest, ROC-AUC = 0.816) turned into a ranked, actionable retention target list
+- 📄 **Short, first-person findings report** (PDF) — what I did, what I found, what I recommend
+- 📈 **3-page interactive Power BI dashboard** — Executive Overview, Customer Segmentation & Retention, Churn Risk & Action
+
+## Repository Structure
+retention-radar/
+│
+├── sql/
+│ ├── 00_schema.sql # Star schema DDL (fact + dimension tables)
+│ ├── 01_etl_load_and_transform.sql # Raw CSV → cleaned star schema
+│ ├── 02_business_intelligence_queries.sql # 10 core BI queries (KPIs, trends, Pareto, etc.)
+│ └── 03_advanced_analytics_queries.sql # RFM segmentation, cohort retention, CLV, market basket
+│
+├── scripts/
+│ ├── live_currency_api.py # Live FX rate integration (Frankfurter API + cache fallback)
+│ ├── build_customer_features.py # Leakage-safe feature engineering for the churn model
+│ ├── build_eda_notebook.py # Programmatically builds & executes the EDA notebook
+│ ├── build_ml_notebook.py # Programmatically builds & executes the ML notebook
+│ └── build_pdf_report.py # Generates the PDF findings report
+│
+├── notebooks/
+│ ├── 01_eda_business_intelligence.ipynb # BI-focused EDA (10 sections, 8 charts, executed with real output)
+│ └── 02_ml_churn_clv_prediction.ipynb # Churn classification + customer value regression
+│
+├── report/
+│ ├── Online_Retail_II_Business_Findings.pdf
+│ └── assets/ # Charts embedded in the PDF
+│
+├── Power-BI/
+│ ├── Power-BI-5.pbix # Interactive 3-page dashboard
+│ └── Power-BI-5.pdf # Static export of the dashboard
+│
+└── requirements.txt
+
+## Dataset
+
+**[Online Retail II](https://archive.ics.uci.edu/dataset/502/online+retail+ii)** (UCI Machine Learning Repository) — ~1.07 million invoice-line transactions from a UK-based online retailer of gift and homeware items, December 2009 to December 2011.
+
+The raw CSV isn't included in this repo (it's ~110 MB, over GitHub's upload limit). You can download it from the link above, or from [this GitHub mirror](https://raw.githubusercontent.com/rposhala/Data_Analysis_of_Online_Retail_datasets/master/online_retail_II.xlsx), and place it at `raw_data/online_retail_II_raw.csv` before running the ETL script.
+
+## Tech Stack
+
+**Database:** PostgreSQL · **Languages:** Python, SQL · **Python libraries:** pandas, numpy, matplotlib, seaborn, scikit-learn, scipy, SQLAlchemy, psycopg2, requests · **BI:** Power BI Desktop · **Reporting:** reportlab (PDF generation) · **Notebooks:** Jupyter, built and executed programmatically via nbformat/nbclient
+
+## Getting Started
+
+```bash
+# 1. Create the database
+createdb online_retail_bi
+
+# 2. Download the raw dataset (see Dataset section above) and save it as:
+#    raw_data/online_retail_II_raw.csv
+
+# 3. Build the schema and run the ETL
+psql -d online_retail_bi -f sql/00_schema.sql
+psql -d online_retail_bi -f sql/01_etl_load_and_transform.sql
+
+# 4. Run the BI and advanced analytics queries
+psql -d online_retail_bi -f sql/02_business_intelligence_queries.sql
+psql -d online_retail_bi -f sql/03_advanced_analytics_queries.sql
+
+# 5. Install Python dependencies
+pip install -r requirements.txt
+
+# 6. (Optional) Try the live currency API
+python scripts/live_currency_api.py
+
+# 7. Build the ML feature set
+python scripts/build_customer_features.py
+
+# 8. Open the notebooks (already executed with real output in this repo,
+#    but you can re-run them against your own database)
+jupyter notebook notebooks/
+```
+
+The Power BI dashboard (`Power-BI/Power-BI-5.pbix`) can be opened directly in Power BI Desktop — it reads from CSV exports of the star schema, regenerated by re-running the SQL scripts above.
+
+## SQL Analysis
+
+The `sql/` folder contains 15+ analyses written directly against the warehouse: KPI summaries, monthly/quarterly revenue trends, country revenue concentration (Pareto), top products, weekday/weekend performance, cancellation rates, new-vs-returning revenue split, customer revenue quartiles, RFM segmentation, cohort retention, historical customer lifetime value, and market-basket (cross-sell) analysis using lift scores.
+
+## Live API Integration
+
+`scripts/live_currency_api.py` pulls live and historical GBP → USD/EUR/TRY exchange rates from the [Frankfurter API](https://frankfurter.dev), converting monthly revenue into the currencies non-UK stakeholders actually think in. If the live call fails for any reason, it automatically falls back to a locally cached snapshot — this is intentional resilience design, not a workaround.
+
+## Exploratory & Business Intelligence Analysis
+
+`notebooks/01_eda_business_intelligence.ipynb` covers data quality, a KPI scorecard, revenue trends, country concentration, RFM customer segmentation, cohort retention, new-vs-returning revenue, cross-sell/basket analysis, and a multi-currency revenue view — each section ends with an explicit business takeaway rather than a bare description of the data.
+
+## Machine Learning
+
+`notebooks/02_ml_churn_clv_prediction.ipynb` trains a churn classifier on a **leakage-safe 90-day holdout split** — features are computed only from activity before the cutoff date, the churn label only from activity after it.
+
+| Model | ROC-AUC |
+|---|---|
+| Logistic Regression | 0.799 |
+| Random Forest | **0.816** |
+
+Predicted churn risk rises monotonically from "Champions" to "Lost/Churned" — cross-validating the ML model against the independent SQL-based RFM segmentation. Customers are ranked by **probability × historical value** (not probability alone) to produce a 25-name retention target list. A secondary customer-value regression (log-transformed to handle the zero-inflated, right-skewed target) reaches a Spearman rank correlation of 0.587 — useful for relative ranking, not precise forecasting.
+
+## Business Findings & Recommendations
+
+Full detail is in `report/Online_Retail_II_Business_Findings.pdf`. In short:
+
+1. **Growth is real but increasingly retention-driven** — the share of monthly revenue from returning customers climbs from ~two-thirds early on to 85–95% later in the dataset.
+2. **The UK dominates, but EIRE, Germany, France and the Netherlands show proven repeat demand** — a better expansion bet than a new market.
+3. **Retention has a sharp month-1 cliff** — most drop-off in repeat purchasing happens in the first 30 days after a customer's first order.
+4. **Revenue is heavily concentrated** — the 1,294-customer "Champions" segment alone drives the large majority of total revenue; the 396-customer "At-Risk High Value" segment is the clearest, highest-ROI retention target.
+5. **Clear, low-risk cross-sell pairs exist** (mostly colour/pattern variants of the same product) with lift scores of 200–400×, and aren't currently merchandised together.
+
+**Recommended actions:** a first-30-days lifecycle campaign, a proactive win-back campaign on the churn-risk list prioritised by expected revenue at risk, featuring the identified product pairs together at checkout, prioritising EIRE/Germany/France/Netherlands for international investment, and reporting executive revenue in period-correct multi-currency terms.
+
+## Power BI Dashboard
+
+A 3-page interactive dashboard built on the star schema, connecting directly to the SQL warehouse exports:
+
+1. **Executive Overview** — total revenue, orders and customers, a daily revenue trend, and revenue by country, with a year slicer
+2. **Customer Segmentation & Retention** — RFM segment summary table, customer distribution by segment, revenue by segment, and a recency-vs-value bubble chart
+3. **Churn Risk & Action** — at-risk customer count, average churn probability, total revenue at risk (£231.2K across the top 25 at-risk customers), a prioritised retention target table, and revenue at risk by country
+
+Open `Power-BI/Power-BI-5.pbix` in Power BI Desktop to explore it interactively, or see `Power-BI/Power-BI-5.pdf` for a static export.
+
+## License & Data Source
+
+Dataset: Chen, Daqing. "Online Retail II." UCI Machine Learning Repository, 2019. [https://doi.org/10.24432/C5CG6D](https://doi.org/10.24432/C5CG6D)
+
+This project is shared for portfolio and educational purposes.
+
+## Author
+
+**Berfin** — Data Analyst Portfolio Project, September 2026
