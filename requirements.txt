@@ -1,0 +1,15 @@
+pandas
+numpy
+matplotlib
+seaborn
+scikit-learn
+scipy
+requests
+sqlalchemy
+psycopg2-binary
+jupyter
+nbformat
+nbclient
+ipykernel
+reportlab
+openpyxl
